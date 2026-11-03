@@ -14,6 +14,7 @@ Item {
     property var settings: ({})
     property bool ready: false
     readonly property color accent: Commons.Color.accent
+    readonly property string lifetimeToken: String(Date.now()) + "-" + String(Math.random())
 
     function configure() {
         if (!root.ready) return;
@@ -47,7 +48,7 @@ Item {
 
     Process {
         id: controller
-        command: ["python3", root.pluginDir + "/native-controller", "run"]
+        command: ["python3", root.pluginDir + "/native-controller", "run", root.lifetimeToken]
         stdinEnabled: true
         stdout: SplitParser {
             onRead: function(line) {
@@ -65,6 +66,8 @@ Item {
 
     Component.onCompleted: Qt.callLater(function() { controller.running = true; })
     Component.onDestruction: {
-        if (controller.running) controller.write("quit\n");
+        // QML may kill Process before it can flush stdin or run a finally
+        // block. A detached, token-scoped cleanup also covers that path.
+        Quickshell.execDetached(["python3", root.pluginDir + "/native-controller", "stop", root.lifetimeToken]);
     }
 }

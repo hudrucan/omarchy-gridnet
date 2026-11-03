@@ -78,20 +78,42 @@ def configure(line):
         raise RuntimeError(reply)
 
 
-def serve():
+def runtime_files():
     runtime = Path(os.environ["XDG_RUNTIME_DIR"]) / "omasnap-window-snap"
     runtime.mkdir(mode=0o700, parents=True, exist_ok=True)
     signature = os.environ.get("HYPRLAND_INSTANCE_SIGNATURE", "")
     if not signature:
         raise RuntimeError("HYPRLAND_INSTANCE_SIGNATURE is missing")
     instance = hashlib.sha256(signature.encode()).hexdigest()[:16]
-    with (runtime / f"{instance}.lock").open("a") as lock:
+    return runtime / f"{instance}.lock", runtime / f"{instance}.json"
+
+
+def unload(state_file, token=None):
+    if not state_file.exists():
+        return
+    state = json.loads(state_file.read_text())
+    if token is not None and state["token"] != token:
+        return
+    result = subprocess.run(["hyprctl", "plugin", "unload", state["library"]], text=True,
+                            capture_output=True, timeout=30)
+    reply = result.stdout.strip()
+    if reply != "ok" and "not loaded" not in reply.lower():
+        raise RuntimeError(f"could not unload native module: {reply or result.stderr.strip()}")
+    state_file.unlink()
+
+
+def serve(token):
+    lock_file, state_file = runtime_files()
+    with lock_file.open("a") as lock:
         # A new shell service waits until its predecessor has unloaded. No
         # detached disable command can race a later enable during hot reload.
         fcntl.flock(lock, fcntl.LOCK_EX)
         library = build()
+        # Recover a previous service killed by QML before its finally block.
+        unload(state_file)
         loaded = False
         try:
+            state_file.write_text(json.dumps({"token": token, "library": str(library)}))
             reply = run("hyprctl", "plugin", "load", str(library))
             if reply != "ok":
                 raise RuntimeError(reply)
@@ -109,9 +131,17 @@ def serve():
                     print(f"Omasnap: {error}", file=sys.stderr, flush=True)
         finally:
             if loaded:
-                reply = run("hyprctl", "plugin", "unload", str(library))
-                if reply != "ok":
-                    raise RuntimeError(f"could not unload native module: {reply}")
+                unload(state_file, token)
+            elif state_file.exists():
+                state_file.unlink()
+
+
+def stop_service(token):
+    lock_file, state_file = runtime_files()
+    with lock_file.open("a") as lock:
+        fcntl.flock(lock, fcntl.LOCK_EX)
+        # A delayed destruction callback must not unload a newer service.
+        unload(state_file, token)
 
 
 def stop(_signum, _frame):
@@ -120,15 +150,20 @@ def stop(_signum, _frame):
 
 if __name__ == "__main__":
     parser = argparse.ArgumentParser(description=__doc__)
-    parser.add_argument("action", choices=["build", "run"])
+    parser.add_argument("action", choices=["build", "run", "stop"])
+    parser.add_argument("token", nargs="?")
     args = parser.parse_args()
     for sig in [signal.SIGTERM, signal.SIGINT, signal.SIGHUP]:
         signal.signal(sig, stop)
     try:
         if args.action == "build":
             print(build())
+        elif not args.token:
+            parser.error("run and stop require a service lifetime token")
+        elif args.action == "run":
+            serve(args.token)
         else:
-            serve()
+            stop_service(args.token)
     except (OSError, RuntimeError, subprocess.SubprocessError, StopIteration, KeyError, ValueError) as error:
         print(f"Omasnap: {error}", file=sys.stderr)
         sys.exit(1)
