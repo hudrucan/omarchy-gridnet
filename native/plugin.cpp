@@ -9,7 +9,6 @@
 #include <linux/input-event-codes.h>
 #include <wayland-server-core.h>
 
-#include <iomanip>
 #include <sstream>
 #include <stdexcept>
 #include <vector>
@@ -152,13 +151,11 @@ class Snap {
     void release(const IPointer::SButtonEvent& event) {
         if (event.button != BTN_LEFT) return;
         if (event.state == WL_POINTER_BUTTON_STATE_PRESSED) { cancelled = false; return; }
-        // Existing titlebars can finish the controller in an earlier listener.
-        // Keep the recorded drag; flush() rechecks eligibility after native drop.
+        // Titlebars may finish the controller before this listener runs.
         if (!cancelled && drag) drop = drag;
         cancelled = false;
         drag.reset();
-        // Native dragEnd may still move/group the target. Apply only after it
-        // finishes, and recheck that it remains a floating window.
+        // Apply after native drop handling; flush() rechecks workspace scope.
         schedule();
     }
 

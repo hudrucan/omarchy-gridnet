@@ -95,8 +95,7 @@ assert ctl("eval", f'hl.dispatch(hl.dsp.focus({{window="address:{address}"}}))')
 assert json.loads(ctl("omasnap", "status"))["ready"]
 assert ctl("omasnap", "configure 24 160 8 1 1 59a6ff") == "ok"
 
-controller = subprocess.Popen([args.pointer], env=env, text=True, stdin=subprocess.PIPE, stdout=subprocess.PIPE)
-mouse = controller
+mouse = subprocess.Popen([args.pointer], env=env, text=True, stdin=subprocess.PIPE, stdout=subprocess.PIPE)
 assert mouse.stdout.readline().strip() == "ready"
 try:
     ctl("omasnap", "restore", check=False)

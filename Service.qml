@@ -6,7 +6,6 @@ import qs.Commons as Commons
 Item {
     id: root
 
-    property var shell: null
     property var manifest: null
     readonly property string pluginId: "omasnap.window-snap"
     readonly property string pluginDir: String((root.manifest && root.manifest.__sourceDir)

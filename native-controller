@@ -171,6 +171,6 @@ if __name__ == "__main__":
             serve(args.token)
         else:
             stop_service(args.token)
-    except (OSError, RuntimeError, subprocess.SubprocessError, StopIteration, KeyError, ValueError) as error:
+    except (OSError, RuntimeError, subprocess.SubprocessError, KeyError, ValueError) as error:
         print(f"Omasnap: {error}", file=sys.stderr)
         sys.exit(1)

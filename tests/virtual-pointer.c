@@ -2,7 +2,6 @@
 // header/code using wayland-scanner and the protocol XML from wlr-protocols.
 #include <stdint.h>
 #include <stdio.h>
-#include <stdlib.h>
 #include <string.h>
 #include <time.h>
 #include <wayland-client.h>
@@ -34,11 +33,9 @@ int main(void) {
     char command[256];
     puts("ready"); fflush(stdout);
     while (fgets(command, sizeof(command), stdin)) {
-        unsigned x, y, width, height, pressed;
+        unsigned pressed;
         double dx, dy;
-        if (sscanf(command, "move %u %u %u %u", &x, &y, &width, &height) == 4)
-            zwlr_virtual_pointer_v1_motion_absolute(pointer, milliseconds(), x, y, width, height);
-        else if (sscanf(command, "relative %lf %lf", &dx, &dy) == 2)
+        if (sscanf(command, "relative %lf %lf", &dx, &dy) == 2)
             zwlr_virtual_pointer_v1_motion(pointer, milliseconds(), wl_fixed_from_double(dx), wl_fixed_from_double(dy));
         else if (sscanf(command, "button %u", &pressed) == 1)
             zwlr_virtual_pointer_v1_button(pointer, milliseconds(), BTN_LEFT, pressed ? WL_POINTER_BUTTON_STATE_PRESSED : WL_POINTER_BUTTON_STATE_RELEASED);
