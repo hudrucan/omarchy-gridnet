@@ -308,7 +308,7 @@ APICALL EXPORT PLUGIN_DESCRIPTION_INFO PLUGIN_INIT(HANDLE handle) {
         .name = "omasnap", .exact = false,
         .fn = [](eHyprCtlOutputFormat, std::string request) { return instance->request(request); }});
     if (!instance->command) throw std::runtime_error("Omasnap: could not register IPC command");
-    return {"omasnap-window-snap", "Edge and corner snapping for native Omarchy floating workspaces", "Omasnap contributors", "0.1.2"};
+    return {"omasnap-window-snap", "Edge and corner snapping for native Omarchy floating workspaces", "Omasnap contributors", "0.1.3"};
 }
 
 APICALL EXPORT void PLUGIN_EXIT() { instance.reset(); }

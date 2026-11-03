@@ -10,7 +10,7 @@
 
 <p align="center">
   Window snapping for Omarchy's native floating workspaces.<br />
-  Halves, quarters, and a full work area — one drag away.
+  Horizontal halves, vertical halves, and quarters — one drag away.
 </p>
 
 <p align="center">
@@ -53,11 +53,13 @@ Move to an edge or corner, then release when the preview appears.
 | :--- | :--- |
 | Left or right edge | Half of the work area |
 | Any corner | Quarter of the work area |
-| Top center | Full work area |
+| Top center | Top half |
 | Bottom center | Bottom half |
 
 **Change your mind?** Move away from the edge or press **Esc** to cancel snapping.
 Drag a snapped window away to restore its previous size.
+
+Double-click the native Omarchy titlebar to fill the work area.
 
 Using Omastation from macOS? Its **Option/Alt + drag** alias works the same way.
 

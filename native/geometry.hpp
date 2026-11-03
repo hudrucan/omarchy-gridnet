@@ -56,7 +56,7 @@ inline Zone parseZone(std::string_view name) {
 inline Box placement(Zone zone, Box area, double gap) {
     const bool left = zone == Zone::left || zone == Zone::topLeft || zone == Zone::bottomLeft;
     const bool right = zone == Zone::right || zone == Zone::topRight || zone == Zone::bottomRight;
-    const bool upper = zone == Zone::topLeft || zone == Zone::topRight;
+    const bool upper = zone == Zone::top || zone == Zone::topLeft || zone == Zone::topRight;
     const bool lower = zone == Zone::bottom || zone == Zone::bottomLeft || zone == Zone::bottomRight;
     double x1 = area.x, y1 = area.y, x2 = area.x + area.w, y2 = area.y + area.h;
     if (left) x2 = std::floor(area.x + area.w / 2);

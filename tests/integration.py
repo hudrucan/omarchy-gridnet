@@ -83,7 +83,7 @@ def expected(zone):
     mid_x, mid_y = (x1 + x2) // 2, (y1 + y2) // 2
     if zone in ["left", "top-left", "bottom-left"]: x2 = mid_x
     if zone in ["right", "top-right", "bottom-right"]: x1 = mid_x
-    if zone in ["top-left", "top-right"]: y2 = mid_y
+    if zone in ["top", "top-left", "top-right"]: y2 = mid_y
     if zone in ["bottom", "bottom-left", "bottom-right"]: y1 = mid_y
     # This compositor uses a 2px border, 30px native titlebar and 8px gap.
     return [x1 + 10, y1 + 40], [x2 - x1 - 20, y2 - y1 - 50]
@@ -143,6 +143,25 @@ try:
     assert geometry()[1] == original[1], (geometry(), original)
     assert current()["floating"] is True
     print("Drag-away restoration after client size adjustment passed", flush=True)
+
+    # The top edge mirrors the bottom edge: full width, half the usable height.
+    position(300, 220)
+    move(450, 205)
+    pointer("button 1")
+    move(460, 205)
+    move(500, 240)
+    move(width // 2, 3)
+    assert json.loads(ctl("omasnap", "status"))["zone"] == "top"
+    pointer("button 0")
+    assert geometry() == expected("top"), (geometry(), expected("top"))
+    at, _ = geometry()
+    move(at[0] + 150, at[1] - 15)
+    pointer("button 1")
+    move(at[0] + 170, at[1] - 15)
+    move(600, 400)
+    pointer("button 0")
+    assert geometry()[1] == original[1], (geometry(), original)
+    print("Top-half titlebar preview, drop and drag-away restoration passed", flush=True)
 
     # Move out of a hotspot before release: no snap should be applied.
     position(300, 220)
