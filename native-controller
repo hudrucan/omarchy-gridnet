@@ -105,8 +105,8 @@ def unload(state_file, token=None):
 def serve(token):
     lock_file, state_file = runtime_files()
     with lock_file.open("a") as lock:
-        # A new shell service waits until its predecessor has unloaded. No
-        # detached disable command can race a later enable during hot reload.
+        # Serialize module transitions; lifetime tokens protect later owners
+        # from a delayed cleanup during hot reload.
         fcntl.flock(lock, fcntl.LOCK_EX)
         library = build()
         # Recover a previous service killed by QML before its finally block.
@@ -122,14 +122,21 @@ def serve(token):
             if status.get("ready") is not True:
                 raise RuntimeError("native module did not become ready")
             print("ready", flush=True)
+            fcntl.flock(lock, fcntl.LOCK_UN)
             for line in sys.stdin:
                 if line.strip() == "quit":
                     break
+                fcntl.flock(lock, fcntl.LOCK_EX)
                 try:
+                    if not state_file.exists() or json.loads(state_file.read_text())["token"] != token:
+                        break
                     configure(line)
                 except (ValueError, RuntimeError) as error:
                     print(f"Omasnap: {error}", file=sys.stderr, flush=True)
+                finally:
+                    fcntl.flock(lock, fcntl.LOCK_UN)
         finally:
+            fcntl.flock(lock, fcntl.LOCK_EX)
             if loaded:
                 unload(state_file, token)
             elif state_file.exists():
