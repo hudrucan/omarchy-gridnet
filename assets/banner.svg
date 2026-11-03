@@ -1,0 +1,44 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="1280" height="380" viewBox="0 0 1280 380" fill="none">
+  <title>Omasnap</title>
+  <desc>Float freely. Snap into place. Native window snapping for Omarchy.</desc>
+  <defs>
+    <linearGradient id="bg" x1="0" y1="0" x2="1280" y2="380" gradientUnits="userSpaceOnUse">
+      <stop stop-color="#1c2a20"/><stop offset="1" stop-color="#101613"/>
+    </linearGradient>
+    <pattern id="grid" width="32" height="32" patternUnits="userSpaceOnUse">
+      <path d="M32 0H0V32" stroke="#b8e994" stroke-opacity=".035"/>
+    </pattern>
+  </defs>
+  <rect width="1280" height="380" rx="20" fill="url(#bg)"/>
+  <rect width="1280" height="380" rx="20" fill="url(#grid)"/>
+  <rect x=".5" y=".5" width="1279" height="379" rx="19.5" stroke="#344338"/>
+  <g stroke="#b8e994" stroke-width="3" stroke-linejoin="round">
+    <rect x="64" y="66" width="40" height="40" rx="5"/>
+    <path d="M84 66V106M84 86H104M71 77H77M71 84H77"/>
+  </g>
+  <g font-family="DejaVu Sans, sans-serif">
+    <text x="120" y="102" fill="#eff4e9" font-size="46" font-weight="700" letter-spacing="-2">Omasnap</text>
+    <text x="64" y="185" fill="#eff4e9" font-size="38" font-weight="700" letter-spacing="-1">Float freely.</text>
+    <text x="64" y="235" fill="#b8e994" font-size="38" font-weight="700" letter-spacing="-1">Snap into place.</text>
+    <text x="64" y="307" fill="#9cad9e" font-size="16">NATIVE WINDOW SNAPPING FOR OMARCHY</text>
+  </g>
+  <g transform="translate(620 50)">
+    <rect width="596" height="280" rx="12" fill="#111814" stroke="#455a49"/>
+    <path d="M1 28H595" stroke="#344338"/>
+    <circle cx="16" cy="14" r="3" fill="#b8e994"/>
+    <path d="M29 14H60M540 14H578" stroke="#607864" stroke-width="3" stroke-linecap="round"/>
+    <rect x="304" y="36" width="284" height="236" rx="5" fill="#b8e994" fill-opacity=".12" stroke="#b8e994" stroke-width="1.5"/>
+    <path d="M312 44H324M312 44V56M580 44H568M580 44V56M312 264H324M312 264V252M580 264H568M580 264V252" stroke="#b8e994" stroke-width="2"/>
+    <rect x="130" y="86" width="280" height="150" rx="7" fill="#24362b" stroke="#79947d"/>
+    <path d="M131 112H409" stroke="#4c6351"/>
+    <path d="M144 99H192" stroke="#cedfca" stroke-width="3" stroke-linecap="round"/>
+    <circle cx="396" cy="99" r="3" fill="#79947d"/>
+    <path d="M148 134H295M148 148H368M148 162H339M148 176H250M148 190H312" stroke="#58735e" stroke-width="5" stroke-linecap="round"/>
+    <path d="M433 99H548M540 91L548 99L540 107" stroke="#b8e994" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"/>
+    <path d="M578 121V145L584.5 139L590 150L595 147.5L589.5 137L598 136Z" fill="#f0f5eb" stroke="#111814" stroke-width="2" stroke-linejoin="round"/>
+    <g font-family="DejaVu Sans, sans-serif" font-size="13" fill="#c9deb9">
+      <rect x="360" y="213" width="172" height="32" rx="16" fill="#203323" stroke="#5e7b55"/>
+      <text x="446" y="234" text-anchor="middle">Release to snap</text>
+    </g>
+  </g>
+</svg>

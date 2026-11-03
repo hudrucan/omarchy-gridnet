@@ -3,6 +3,7 @@
   "id": "omasnap.window-snap",
   "name": "Omasnap",
   "version": "0.1.2",
+  "author": "hudrucan",
   "description": "Drag floating windows to screen edges and corners to snap them into halves, quarters, or the full work area.",
   "license": "MIT",
   "icon": "assets/icon.svg",
