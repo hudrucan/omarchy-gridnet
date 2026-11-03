@@ -1,0 +1,134 @@
+#!/usr/bin/env python3
+"""Build and own the native module for the lifetime of an Omarchy service."""
+
+import argparse
+import fcntl
+import hashlib
+import json
+import os
+from pathlib import Path
+import shlex
+import signal
+import subprocess
+import sys
+import tempfile
+
+ROOT = Path(__file__).resolve().parent
+
+
+def run(*args):
+    result = subprocess.run(args, text=True, capture_output=True, timeout=30)
+    if result.returncode:
+        raise RuntimeError(result.stderr.strip() or result.stdout.strip() or f"{args[0]} failed")
+    return result.stdout.strip()
+
+
+def build():
+    flags = shlex.split(run("pkg-config", "--cflags", "--libs", "hyprland"))
+    compiler = shlex.split(os.environ.get("CXX", "g++"))
+    # version.h includes Hyprland's commit and the hypr* dependency versions.
+    includes = [Path(flag[2:]) for flag in flags if flag.startswith("-I")]
+    candidates = [p / name for p in includes for name in ["src/version.h", "hyprland/src/version.h"]]
+    version = next((p for p in candidates if p.is_file()), None)
+    if version is None:
+        raise RuntimeError("Hyprland development headers (src/version.h) were not found through pkg-config")
+    digest = hashlib.sha256(version.read_bytes() + repr(flags).encode() + repr(compiler).encode())
+    for source in sorted((ROOT / "native").glob("*")):
+        if source.is_file():
+            digest.update(source.read_bytes())
+    cache = Path(os.environ.get("XDG_CACHE_HOME", Path.home() / ".cache")) / "omasnap-window-snap"
+    cache.mkdir(parents=True, exist_ok=True)
+    output = cache / f"omasnap-{digest.hexdigest()[:20]}.so"
+    if output.is_file():
+        return output
+    print("Omasnap: building the native module for installed Hyprland headers", file=sys.stderr)
+    with tempfile.TemporaryDirectory(prefix="build-", dir=cache) as temporary:
+        compiled = Path(temporary) / "omasnap.so"
+        result = subprocess.run([
+            *compiler, "-std=c++26", "-shared", "-fPIC", "-O2", "-Wall", "-Wextra", "-Wno-unused-parameter",
+            str(ROOT / "native/plugin.cpp"), "-o", str(compiled), *flags,
+        ], timeout=180)
+        if result.returncode:
+            raise RuntimeError("native build failed; see compiler output above")
+        compiled.chmod(0o755)
+        compiled.replace(output)
+    return output
+
+
+def configure(line):
+    settings = json.loads(line)
+    values = []
+    for key, default, minimum, maximum in [("edge", 24, 4, 100), ("corner", 160, 16, 500), ("gap", 8, 0, 100)]:
+        value = settings.get(key, default)
+        if isinstance(value, bool) or not isinstance(value, (int, float)) or not minimum <= value <= maximum:
+            raise ValueError(f"{key} must be between {minimum} and {maximum}")
+        values.append(str(value))
+    for key in ["preview", "keepVisible"]:
+        value = settings.get(key, True)
+        if not isinstance(value, bool):
+            raise ValueError(f"{key} must be boolean")
+        values.append(str(int(value)))
+    color = settings.get("color", "#59a6ff")
+    if not isinstance(color, str) or len(color) != 7 or not color.startswith("#"):
+        raise ValueError("color must be #rrggbb")
+    int(color[1:], 16)
+    values.append(color[1:])
+    reply = run("hyprctl", "omasnap", "configure " + " ".join(values))
+    if reply != "ok":
+        raise RuntimeError(reply)
+
+
+def serve():
+    runtime = Path(os.environ["XDG_RUNTIME_DIR"]) / "omasnap-window-snap"
+    runtime.mkdir(mode=0o700, parents=True, exist_ok=True)
+    signature = os.environ.get("HYPRLAND_INSTANCE_SIGNATURE", "")
+    if not signature:
+        raise RuntimeError("HYPRLAND_INSTANCE_SIGNATURE is missing")
+    instance = hashlib.sha256(signature.encode()).hexdigest()[:16]
+    with (runtime / f"{instance}.lock").open("a") as lock:
+        # A new shell service waits until its predecessor has unloaded. No
+        # detached disable command can race a later enable during hot reload.
+        fcntl.flock(lock, fcntl.LOCK_EX)
+        library = build()
+        loaded = False
+        try:
+            reply = run("hyprctl", "plugin", "load", str(library))
+            if reply != "ok":
+                raise RuntimeError(reply)
+            loaded = True
+            status = json.loads(run("hyprctl", "omasnap", "status"))
+            if status.get("ready") is not True:
+                raise RuntimeError("native module did not become ready")
+            print("ready", flush=True)
+            for line in sys.stdin:
+                if line.strip() == "quit":
+                    break
+                try:
+                    configure(line)
+                except (ValueError, RuntimeError) as error:
+                    print(f"Omasnap: {error}", file=sys.stderr, flush=True)
+        finally:
+            if loaded:
+                reply = run("hyprctl", "plugin", "unload", str(library))
+                if reply != "ok":
+                    raise RuntimeError(f"could not unload native module: {reply}")
+
+
+def stop(_signum, _frame):
+    raise SystemExit(0)
+
+
+if __name__ == "__main__":
+    parser = argparse.ArgumentParser(description=__doc__)
+    parser.add_argument("action", choices=["build", "run"])
+    args = parser.parse_args()
+    for sig in [signal.SIGTERM, signal.SIGINT, signal.SIGHUP]:
+        signal.signal(sig, stop)
+    try:
+        if args.action == "build":
+            print(build())
+        else:
+            serve()
+    except (OSError, RuntimeError, subprocess.SubprocessError, StopIteration, KeyError, ValueError) as error:
+        print(f"Omasnap: {error}", file=sys.stderr)
+        sys.exit(1)

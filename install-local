@@ -1,0 +1,19 @@
+#!/bin/bash
+set -euo pipefail
+cd -- "$(dirname -- "$0")"
+target="$HOME/.config/omarchy/plugins/omasnap.window-snap"
+./validate
+git rev-parse --verify HEAD >/dev/null
+if [[ -n $(git status --porcelain) ]]; then
+  echo "Commit source changes before installing; the installed checkout must match this repo." >&2
+  exit 1
+fi
+if [[ -e $target ]]; then
+  echo "Already installed at $target; disable it and update that checkout explicitly." >&2
+  exit 1
+fi
+# The Omarchy validator rejects symlinks; install a real local Git checkout.
+git clone --no-hardlinks -- "$(pwd)" "$target"
+omarchy plugin validate "$target"
+omarchy-shell shell rescanPlugins
+omarchy plugin enable omasnap.window-snap

@@ -1,0 +1,11 @@
+{
+  "schemaVersion": 1,
+  "id": "omasnap.window-snap",
+  "name": "Omasnap",
+  "version": "0.1.0",
+  "description": "Drag floating windows to screen edges and corners to snap them into halves, quarters, or the full work area.",
+  "license": "MIT",
+  "icon": "assets/icon.svg",
+  "kinds": ["service"],
+  "entryPoints": { "service": "Service.qml" }
+}
