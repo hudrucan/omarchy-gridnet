@@ -13,7 +13,23 @@ if [[ -e $target ]]; then
   exit 1
 fi
 # The Omarchy validator rejects symlinks; install a real local Git checkout.
-git clone --no-hardlinks -- "$(pwd)" "$target"
-omarchy plugin validate "$target"
+mkdir -p -- "$(dirname -- "$target")"
+stage=$(mktemp -d "$(dirname -- "$target")/.omasnap-install.XXXXXX")
+trap 'rm -rf -- "$stage"' EXIT
+git clone --no-hardlinks -- "$(pwd)" "$stage"
+omarchy plugin validate "$stage"
+mv -T -- "$stage" "$target"
 omarchy-shell shell rescanPlugins
+discovered=false
+for ((attempt = 0; attempt < 40; ++attempt)); do
+  if omarchy plugin list --json | jq -e 'any(.[]; .id == "omasnap.window-snap")' >/dev/null; then
+    discovered=true
+    break
+  fi
+  sleep 0.05
+done
+if [[ $discovered != true ]]; then
+  echo "Plugin discovery timed out; installed at $target, but not enabled." >&2
+  exit 1
+fi
 omarchy plugin enable omasnap.window-snap
