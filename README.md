@@ -20,7 +20,7 @@ native floating workspaces and leaves existing bindings and titlebars in place.
 
 ## Requirements
 
-- Omarchy 4.5 and Hyprland 0.56.2 (tested)
+- Omarchy 4.5 rc3 and Hyprland 0.56.2 (tested)
 - Matching Hyprland headers and dependencies available through `pkg-config hyprland`
 - Python 3, `pkg-config`, and `g++` with C++26 support
 
