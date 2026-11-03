@@ -99,6 +99,10 @@ native drag in a live session before treating a new Hyprland ABI as supported.
 Omarchy titlebar and a virtual mouse. It checks all eight placements, exact
 restoration, titlebar dragging, the preview, drag-away restoration, cancellation,
 and rejection of ordinary floating windows outside native floating workspaces.
+Run with the test window opened before loading Omasnap as well as after loading
+it: existing titlebars can finish their drag in an earlier button listener. The
+test verifies exact snapped client geometry and restoration after a client size
+adjustment. `--app-id org.omarchy.agent` can target a tagged Agent test window.
 It refuses to target the current compositor. Generate the client protocol header
 and source from the official `wlr-virtual-pointer-unstable-v1.xml` with
 `wayland-scanner`, then compile `tests/virtual-pointer.c` against `wayland-client`.

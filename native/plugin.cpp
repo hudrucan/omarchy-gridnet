@@ -29,23 +29,20 @@ CBox native(Box b) { return {b.x, b.y, b.w, b.h}; }
 CBox frame(SP<Target> target, CBox client) {
     const auto w = target->window();
     const auto reserved = w->getFullWindowReservedArea();
-    const Vector2D border{double(w->getRealBorderSize()), double(w->getRealBorderSize())};
-    return {client.pos() - reserved.topLeft - border,
-            client.size() + reserved.topLeft + reserved.bottomRight + border * 2};
+    return {client.pos() - reserved.topLeft,
+            client.size() + reserved.topLeft + reserved.bottomRight};
 }
 
 CBox client(SP<Target> target, CBox outer) {
     const auto w = target->window();
     const auto reserved = w->getFullWindowReservedArea();
-    const Vector2D border{double(w->getRealBorderSize()), double(w->getRealBorderSize())};
-    return {outer.pos() + reserved.topLeft + border,
-            (outer.size() - reserved.topLeft - reserved.bottomRight - border * 2).clamp({1, 1}, {})};
+    return {outer.pos() + reserved.topLeft,
+            (outer.size() - reserved.topLeft - reserved.bottomRight).clamp({1, 1}, {})};
 }
 
 struct Saved {
     WP<Target> target;
     CBox original;
-    CBox snapped;
 };
 struct Drag {
     WP<Target> target;
@@ -123,7 +120,7 @@ class Snap {
         g_layoutManager->setTargetGeom(box, target);
         target->rememberFloatingSize(target->position().size());
         Desktop::windowState()->raise(target->window());
-        saved.push_back({target, original, target->position()});
+        saved.push_back({target, original});
     }
 
     void schedule() {
@@ -155,7 +152,9 @@ class Snap {
     void release(const IPointer::SButtonEvent& event) {
         if (event.button != BTN_LEFT) return;
         if (event.state == WL_POINTER_BUTTON_STATE_PRESSED) { cancelled = false; return; }
-        if (!cancelled && drag && g_layoutManager->dragController()->mode() == MBIND_MOVE) drop = drag;
+        // Existing titlebars can finish the controller in an earlier listener.
+        // Keep the recorded drag; flush() rechecks eligibility after native drop.
+        if (!cancelled && drag) drop = drag;
         cancelled = false;
         drag.reset();
         // Native dragEnd may still move/group the target. Apply only after it
@@ -201,20 +200,17 @@ class Snap {
             drag->restored = true;
             if (const auto s = savedFor(t)) {
                 const auto original = s->original;
-                const auto snapped = s->snapped;
-                // A manual resize supersedes the old restore size.
-                if ((t->position().size() - snapped.size()).size() < 2) {
-                    const double fraction = std::clamp((drag->pointer.x - drag->original.x) / drag->original.w, 0.0, 1.0);
-                    const auto reserved = t->window()->getFullWindowReservedArea();
-                    const double grabY = std::clamp(drag->pointer.y - drag->original.y, -reserved.topLeft.y, 24.0);
-                    const CBox restored{cursor.x - fraction * original.w, cursor.y - grabY, original.w, original.h};
-                    g_layoutManager->setTargetGeom(restored, t);
-                    t->warpPositionSize();
-                    // Rebase native dragging on the restored size, using the
-                    // public controller API rather than replacing its code.
-                    controller->dragBegin(t, MBIND_MOVE, std::nullopt, controller->exclusiveDeviceGrab());
-                    drag->original = original;
-                }
+                // Client size increments must not discard the pre-snap size.
+                // Explicit native resize drags clear the record in motion().
+                const double fraction = std::clamp((drag->pointer.x - drag->original.x) / drag->original.w, 0.0, 1.0);
+                const auto reserved = t->window()->getFullWindowReservedArea();
+                const double grabY = std::clamp(drag->pointer.y - drag->original.y, -reserved.topLeft.y, 24.0);
+                const CBox restored{cursor.x - fraction * original.w, cursor.y - grabY, original.w, original.h};
+                g_layoutManager->setTargetGeom(restored, t);
+                t->warpPositionSize();
+                // Rebase native dragging using the public controller API.
+                controller->dragBegin(t, MBIND_MOVE, std::nullopt, controller->exclusiveDeviceGrab());
+                drag->original = original;
                 forget(t);
             }
         }
@@ -311,7 +307,7 @@ APICALL EXPORT PLUGIN_DESCRIPTION_INFO PLUGIN_INIT(HANDLE handle) {
         .name = "omasnap", .exact = false,
         .fn = [](eHyprCtlOutputFormat, std::string request) { return instance->request(request); }});
     if (!instance->command) throw std::runtime_error("Omasnap: could not register IPC command");
-    return {"omasnap-window-snap", "Edge and corner snapping for native Omarchy floating workspaces", "Omasnap contributors", "0.1.0"};
+    return {"omasnap-window-snap", "Edge and corner snapping for native Omarchy floating workspaces", "Omasnap contributors", "0.1.1"};
 }
 
 APICALL EXPORT void PLUGIN_EXIT() { instance.reset(); }

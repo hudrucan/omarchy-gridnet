@@ -11,6 +11,7 @@ parser = argparse.ArgumentParser(description=__doc__)
 parser.add_argument("--instance", required=True)
 parser.add_argument("--display", required=True)
 parser.add_argument("--pointer", required=True, help="compiled tests/virtual-pointer.c")
+parser.add_argument("--app-id", default="omasnap-test")
 parser.add_argument("--artifacts", default="build/integration")
 args = parser.parse_args()
 if args.instance == os.environ.get("HYPRLAND_INSTANCE_SIGNATURE"):
@@ -63,7 +64,21 @@ monitors = json.loads(ctl("-j", "monitors"))
 mon = next(m for m in monitors if m["name"] == "OMASNAP-TEST")
 assert mon["x"] == mon["y"] == 0 and mon["scale"] == 1, mon
 width, height = mon["width"], mon["height"]
-window = next(w for w in windows() if w["class"] == "omasnap-test")
+
+
+def expected(zone):
+    left, top, right, bottom = mon["reserved"]
+    x1, y1, x2, y2 = left, top, width - right, height - bottom
+    mid_x, mid_y = (x1 + x2) // 2, (y1 + y2) // 2
+    if zone in ["left", "top-left", "bottom-left"]: x2 = mid_x
+    if zone in ["right", "top-right", "bottom-right"]: x1 = mid_x
+    if zone in ["top-left", "top-right"]: y2 = mid_y
+    if zone in ["bottom", "bottom-left", "bottom-right"]: y1 = mid_y
+    # This compositor uses a 2px border, 30px native titlebar and 8px gap.
+    return [x1 + 10, y1 + 40], [x2 - x1 - 20, y2 - y1 - 50]
+
+
+window = next(w for w in windows() if w["class"] == args.app_id)
 address = window["address"]
 assert ctl("eval", f'hl.dispatch(hl.dsp.focus({{window="address:{address}"}}))') == "ok"
 assert json.loads(ctl("omasnap", "status"))["ready"]
@@ -80,8 +95,7 @@ try:
         assert ctl("omasnap", "snap " + zone) == "ok"
         time.sleep(0.1)
         at, size = geometry()
-        assert size[0] <= width and size[1] <= height and min(size) > 0, (zone, at, size)
-        assert at[0] >= 8 and at[1] >= 38, ("titlebar must be on screen", zone, at)
+        assert (at, size) == expected(zone), (zone, (at, size), expected(zone))
         assert ctl("omasnap", "restore") == "ok"
         time.sleep(0.1)
         assert geometry() == original, (zone, geometry(), original)
@@ -99,9 +113,15 @@ try:
     subprocess.run(["grim", "-o", "OMASNAP-TEST", str(artifacts / "right-preview.png")], env=env, check=True)
     pointer("button 0")
     at, size = geometry()
-    assert at[0] > width / 2 and size[0] < width / 2, (at, size)
+    assert (at, size) == expected("right"), ((at, size), expected("right"))
     assert json.loads(ctl("omasnap", "status"))["zone"] == "none"
     print("Native titlebar drag, preview and right-half drop passed", flush=True)
+
+    # Client configure acknowledgements may round sizes; they are not a user
+    # starting a native border-resize drag and must preserve restoration.
+    assert ctl("eval", f'hl.dispatch(hl.dsp.window.resize({{window="address:{address}",x={size[0]+3},y={size[1]+3}}}))') == "ok"
+    time.sleep(0.1)
+    at, size = geometry()
 
     # Pull the snapped window away: recover its old size and leave it floating.
     move(at[0] + 150, at[1] - 15)
@@ -112,7 +132,7 @@ try:
     pointer("button 0")
     assert geometry()[1] == original[1], (geometry(), original)
     assert current()["floating"] is True
-    print("Drag-away restoration passed", flush=True)
+    print("Drag-away restoration after client size adjustment passed", flush=True)
 
     # Move out of a hotspot before release: no snap should be applied.
     position(300, 220)
