@@ -1,6 +1,7 @@
 #!/usr/bin/env python3
 """Exercise an already isolated Hyprland test instance; never use the real desktop."""
 import argparse
+from contextlib import contextmanager
 import json
 import os
 from pathlib import Path
@@ -58,6 +59,16 @@ def move(x, y):
     pointer(f"relative {x - cursor[0]} {y - cursor[1]}")
     actual = [float(v.strip()) for v in ctl("cursorpos").split(",")]
     assert abs(actual[0] - x) <= 1 and abs(actual[1] - y) <= 1, (actual, (x, y))
+
+
+@contextmanager
+def modifier(name):
+    held = subprocess.Popen(["wtype", "-M", name, "-s", "1500", "-m", name], env=env)
+    try:
+        time.sleep(0.1)
+        yield
+    finally:
+        held.wait(timeout=5)
 
 
 monitors = json.loads(ctl("-j", "monitors"))
@@ -160,6 +171,31 @@ try:
     assert geometry()[1] == original[1]
     assert json.loads(ctl("omasnap", "status"))["zone"] == "none"
     print("Escape cancels snapping for the rest of the drag", flush=True)
+
+    # Native keybind drags start from the client area, rather than a titlebar.
+    # Both modifier aliases must enter the same preview/snap/restore lifecycle.
+    for name in ["logo", "alt"]:
+        position(300, 220)
+        move(450, 350)
+        with modifier(name):
+            pointer("button 1")
+            move(460, 350)
+            move(500, 400)
+            move(width - 3, height // 2)
+            state = json.loads(ctl("omasnap", "status"))
+            assert state["zone"] == "right", (name, "preview", state, geometry())
+            pointer("button 0")
+        assert geometry() == expected("right"), (name, geometry(), expected("right"))
+        at, _ = geometry()
+        move(at[0] + 150, at[1] + 200)
+        with modifier(name):
+            pointer("button 1")
+            move(at[0] + 170, at[1] + 210)
+            move(at[0] + 190, at[1] + 220)
+            move(600, 400)
+            pointer("button 0")
+        assert geometry()[1] == original[1], (name, "restore", geometry(), original)
+        print(name + "+left-drag preview, snap and restore passed", flush=True)
 
     # A separate, ordinary floating window has no native workspace tag.
     outside = subprocess.Popen(["foot", "--app-id", "omasnap-outside", "sleep", "30"], env=env,

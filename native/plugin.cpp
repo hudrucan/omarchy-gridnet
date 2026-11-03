@@ -192,7 +192,9 @@ class Snap {
             return;
         }
         const auto cursor = g_pInputManager->getMouseCoordsInternal();
-        if (!controller->dragThresholdReached()) return;
+        // Keybind handling clears the native threshold flag, even when its
+        // configured threshold is zero and the window is already moving.
+        // Actual target movement works for both titlebars and modifier binds.
         drag->moved = drag->moved || (t->position().pos() - drag->original.pos()).size() >= 6;
         if (!drag->moved) return;
 
@@ -204,7 +206,9 @@ class Snap {
                 // Explicit native resize drags clear the record in motion().
                 const double fraction = std::clamp((drag->pointer.x - drag->original.x) / drag->original.w, 0.0, 1.0);
                 const auto reserved = t->window()->getFullWindowReservedArea();
-                const double grabY = std::clamp(drag->pointer.y - drag->original.y, -reserved.topLeft.y, 24.0);
+                const double offsetY = drag->pointer.y - drag->original.y;
+                const double grabY = offsetY < 0 ? std::max(offsetY, -reserved.topLeft.y)
+                    : std::clamp(offsetY / drag->original.h, 0.0, 1.0) * original.h;
                 const CBox restored{cursor.x - fraction * original.w, cursor.y - grabY, original.w, original.h};
                 g_layoutManager->setTargetGeom(restored, t);
                 t->warpPositionSize();
@@ -307,7 +311,7 @@ APICALL EXPORT PLUGIN_DESCRIPTION_INFO PLUGIN_INIT(HANDLE handle) {
         .name = "omasnap", .exact = false,
         .fn = [](eHyprCtlOutputFormat, std::string request) { return instance->request(request); }});
     if (!instance->command) throw std::runtime_error("Omasnap: could not register IPC command");
-    return {"omasnap-window-snap", "Edge and corner snapping for native Omarchy floating workspaces", "Omasnap contributors", "0.1.1"};
+    return {"omasnap-window-snap", "Edge and corner snapping for native Omarchy floating workspaces", "Omasnap contributors", "0.1.2"};
 }
 
 APICALL EXPORT void PLUGIN_EXIT() { instance.reset(); }

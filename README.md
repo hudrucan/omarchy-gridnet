@@ -20,6 +20,10 @@ This plugin extends Omarchy's native floating mode and titlebars. It does not
 change workspace layouts, other windows, default shortcuts, or magnetic snapping.
 Only windows tagged `omarchy-floating-workspace` are eligible.
 
+Existing modifier-drag aliases, including Omastation's Option/Alt + left-drag
+for Mac clients, share the same preview, snap and restore behavior as titlebar
+drags. Omasnap does not register additional mouse bindings.
+
 ## Requirements
 
 - Omarchy 4.5 with native floating workspaces and the shell plugin system
@@ -103,6 +107,8 @@ Run with the test window opened before loading Omasnap as well as after loading
 it: existing titlebars can finish their drag in an earlier button listener. The
 test verifies exact snapped client geometry and restoration after a client size
 adjustment. `--app-id org.omarchy.agent` can target a tagged Agent test window.
+The test compositor also needs Super/Alt + left-button drag bindings to exercise
+the same lifecycle from the client area with both modifiers.
 It refuses to target the current compositor. Generate the client protocol header
 and source from the official `wlr-virtual-pointer-unstable-v1.xml` with
 `wayland-scanner`, then compile `tests/virtual-pointer.c` against `wayland-client`.
