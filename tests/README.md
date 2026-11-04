@@ -2,7 +2,8 @@
 
 `integration.py` drives a virtual mouse in a separate Hyprland instance. It
 checks exact snap geometry, preview, restoration after client size adjustments,
-Escape cancellation, Super/Alt dragging, and floating-workspace scope. It
+Escape cancellation, Super/Alt dragging, all eight keyboard shortcuts, config
+reload, and shortcut passthrough outside native floating workspaces. It
 refuses to target the current compositor.
 
 ## Build the virtual mouse
@@ -27,6 +28,7 @@ Use a dedicated compositor with:
 - Output `OMASNAP-TEST` at `(0, 0)`, scale 1.
 - Border 2px, native Omarchy titlebar 30px, animations disabled.
 - Super/Alt + left-button bindings using `hl.dsp.window.drag()`.
+- `input.resolve_binds_by_sym = true` so bindings honor `wtype`'s custom keymap.
 - A floating window with app ID `omasnap-test`, tagged `omarchy-floating-workspace`.
 - Omasnap loaded through `native-controller run <unique-token>` with stdin open.
 - `foot`, `wtype`, and `grim` available.

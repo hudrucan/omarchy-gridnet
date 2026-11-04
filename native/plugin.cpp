@@ -4,6 +4,7 @@
 #include <hyprland/src/desktop/state/WindowState.hpp>
 #include <hyprland/src/event/EventBus.hpp>
 #include <hyprland/src/layout/LayoutManager.hpp>
+#include <hyprland/src/managers/KeybindManager.hpp>
 #include <hyprland/src/render/Renderer.hpp>
 #include <hyprland/src/state/MonitorState.hpp>
 #include <linux/input-event-codes.h>
@@ -55,6 +56,7 @@ class Snap {
   public:
     std::vector<CHyprSignalListener> listeners;
     SP<SHyprCtlCommand> command;
+    std::vector<SP<SKeybind>> bindings;
     wl_event_source* idle = nullptr;
     std::optional<Drag> drag, drop;
     std::vector<Saved> saved;
@@ -67,8 +69,34 @@ class Snap {
     CHyprColor accent{0.35, 0.65, 1.0, 0.22};
 
     ~Snap() {
+        removeBindings();
         if (idle) wl_event_source_remove(idle);
         hide();
+    }
+
+    void removeBindings() {
+        if (g_pKeybindManager)
+            std::erase_if(g_pKeybindManager->m_keybinds, [&](const auto& binding) {
+                return std::find(bindings.begin(), bindings.end(), binding) != bindings.end();
+            });
+        bindings.clear();
+    }
+
+    void installBindings() {
+        removeBindings();
+        const auto modifiers = g_pKeybindManager->stringToModMask("CTRL ALT SHIFT");
+        for (const auto& [key, zone] : {
+            std::pair{"LEFT", "left"}, {"RIGHT", "right"}, {"UP", "top"}, {"DOWN", "bottom"},
+            {"U", "top-left"}, {"I", "top-right"}, {"J", "bottom-left"}, {"K", "bottom-right"}
+        }) {
+            if (g_pKeybindManager->findConflictingKeybind(xkb_keysym_from_name(key, XKB_KEYSYM_CASE_INSENSITIVE), modifiers))
+                continue;
+            bindings.push_back(g_pKeybindManager->addKeybind(SKeybind{
+                .key = key, .modmask = modifiers, .handler = "omasnap:snap", .arg = zone,
+                .description = std::string("Omasnap: ") + zone, .hasDescription = true,
+                .displayKey = std::string("CTRL + ALT + SHIFT + ") + key,
+            }));
+        }
     }
 
     bool eligible(SP<Target> t) const {
@@ -290,7 +318,14 @@ APICALL EXPORT PLUGIN_DESCRIPTION_INFO PLUGIN_INIT(HANDLE handle) {
     if (std::string(__hyprland_api_get_hash()) != __hyprland_api_get_client_hash())
         throw std::runtime_error("Omasnap: installed headers do not match the running Hyprland; rebuild after logging in again");
     instance = std::make_unique<Snap>();
+    if (!HyprlandAPI::addDispatcherV2(handle, "omasnap:snap", [](std::string zone) -> SDispatchResult {
+        const auto w = Desktop::focusState()->window();
+        if (!instance->eligible(w ? w->m_target : nullptr)) return {.passEvent = true, .success = true, .error = ""};
+        const auto result = instance->request("omasnap snap " + zone);
+        return {.success = result == "ok", .error = result == "ok" ? "" : result};
+    })) throw std::runtime_error("Omasnap: could not register snap dispatcher");
     auto& events = Event::bus()->m_events;
+    instance->listeners.push_back(events.config.reloaded.listen([] { instance->installBindings(); }));
     instance->listeners.push_back(events.input.mouse.move.listen([](Vector2D, Event::SCallbackInfo&) { instance->motion(); }));
     instance->listeners.push_back(events.input.mouse.button.listen([](IPointer::SButtonEvent e, Event::SCallbackInfo&) { instance->release(e); }));
     instance->listeners.push_back(events.input.keyboard.key.listen([](IKeyboard::SKeyEvent e, Event::SCallbackInfo&) {
@@ -308,7 +343,8 @@ APICALL EXPORT PLUGIN_DESCRIPTION_INFO PLUGIN_INIT(HANDLE handle) {
         .name = "omasnap", .exact = false,
         .fn = [](eHyprCtlOutputFormat, std::string request) { return instance->request(request); }});
     if (!instance->command) throw std::runtime_error("Omasnap: could not register IPC command");
-    return {"omasnap-window-snap", "Edge and corner snapping for native Omarchy floating workspaces", "Omasnap contributors", "0.1.3"};
+    instance->installBindings();
+    return {"omasnap-window-snap", "Edge and corner snapping for native Omarchy floating workspaces", "Omasnap contributors", "0.1.4"};
 }
 
 APICALL EXPORT void PLUGIN_EXIT() { instance.reset(); }

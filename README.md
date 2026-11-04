@@ -29,7 +29,7 @@
 - **Keep windows within reach.** Free drops leave a titlebar grip on screen.
 - **Fit your desktop.** Placement respects panel reservations and your chosen gap.
 
-Active only in **native floating workspaces**. Uses your existing drag bindings and titlebars.
+Active only in **native floating workspaces**. Uses your existing titlebars and drag bindings.
 
 ## Install
 
@@ -62,6 +62,21 @@ Drag a snapped window away to restore its previous size.
 Double-click the native Omarchy titlebar to fill the work area.
 
 Using Omastation from macOS? Its **Option/Alt + drag** alias works the same way.
+
+### Keyboard shortcuts
+
+Hold **Ctrl + Alt + Shift** (Mac: **Control + Option + Shift**):
+
+| Key | Snap to |
+| :--- | :--- |
+| `←` / `→` | Left / right half |
+| `↑` / `↓` | Top / bottom half |
+| `U` / `I` | Top-left / top-right quarter |
+| `J` / `K` | Bottom-left / bottom-right quarter |
+
+These eight shortcuts are registered while Omasnap is enabled and removed when
+disabled. Outside native floating workspaces, they pass through to the focused
+app. Existing bindings for the same combinations take priority.
 
 ## Configure
 

@@ -47,6 +47,16 @@ def position(x, y, width=700, height=500):
     time.sleep(0.15)
 
 
+def shortcut(key):
+    subprocess.run(["wtype", "-M", "ctrl", "-M", "alt", "-M", "shift", "-s", "100", "-k", key, "-s", "100",
+                    "-m", "shift", "-m", "alt", "-m", "ctrl"], env=env, check=True)
+    time.sleep(0.1)
+
+
+def snap_bindings():
+    return [b for b in json.loads(ctl("-j", "binds")) if b["dispatcher"] == "omasnap:snap"]
+
+
 def pointer(command):
     mouse.stdin.write(command + "\n")
     mouse.stdin.flush()
@@ -110,6 +120,25 @@ try:
         time.sleep(0.1)
         assert geometry() == original, (zone, geometry(), original)
     print("All eight IPC placements and exact restoration passed", flush=True)
+
+    assert len(snap_bindings()) == 8
+    for key, zone in [("Left", "left"), ("Right", "right"), ("Up", "top"), ("Down", "bottom"),
+                      ("u", "top-left"), ("i", "top-right"), ("j", "bottom-left"), ("k", "bottom-right")]:
+        shortcut(key)
+        assert geometry() == expected(zone), (key, geometry(), expected(zone))
+        assert ctl("omasnap", "restore") == "ok"
+        time.sleep(0.1)
+        assert geometry() == original
+    print("All eight Ctrl+Alt+Shift keyboard shortcuts passed", flush=True)
+
+    ctl("reload")
+    time.sleep(0.3)
+    assert len(snap_bindings()) == 8
+    shortcut("Up")
+    assert geometry() == expected("top")
+    assert ctl("omasnap", "restore") == "ok"
+    time.sleep(0.1)
+    print("Keyboard shortcuts survive config reload without duplicates", flush=True)
 
     # Drag the native titlebar, with no modifier and no plugin-specific action.
     move(450, 205)
@@ -216,7 +245,12 @@ try:
         print(name + "+left-drag preview, snap and restore passed", flush=True)
 
     # A separate, ordinary floating window has no native workspace tag.
-    outside = subprocess.Popen(["foot", "--app-id", "omasnap-outside", "sleep", "30"], env=env,
+    input_log = artifacts / "outside-keys.bin"
+    input_log.unlink(missing_ok=True)
+    probe = ("import os,sys,tty\ntty.setraw(0)\n"
+             "with open(sys.argv[1], 'wb', buffering=0) as output:\n"
+             " while True: output.write(os.read(0, 4096))\n")
+    outside = subprocess.Popen(["foot", "--app-id", "omasnap-outside", "python3", "-c", probe, str(input_log)], env=env,
                                stdout=subprocess.DEVNULL, stderr=subprocess.DEVNULL)
     try:
         for _ in range(30):
@@ -228,6 +262,15 @@ try:
                    f'hl.dispatch(hl.dsp.focus({{window="address:{other}"}}))') == "ok"
         reply = ctl("omasnap", "snap left", check=False)
         assert reply.startswith("error:"), ("non-native floating workspace was modified", reply)
+        for _ in range(30):
+            if input_log.exists(): break
+            time.sleep(0.05)
+        assert input_log.exists()
+        before = next(w for w in windows() if w["address"] == other)
+        shortcut("Left")
+        after = next(w for w in windows() if w["address"] == other)
+        assert (after["at"], after["size"]) == (before["at"], before["size"])
+        assert b"\x1b[1;8D" in input_log.read_bytes(), "Shortcut did not reach the ordinary floating client"
     finally:
         outside.terminate()
         outside.wait(timeout=5)
