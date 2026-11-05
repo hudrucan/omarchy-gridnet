@@ -87,13 +87,13 @@ class Snap {
         const auto modifiers = g_pKeybindManager->stringToModMask("CTRL ALT SHIFT");
         for (const auto& [key, zone] : {
             std::pair{"LEFT", "left"}, {"RIGHT", "right"}, {"UP", "top"}, {"DOWN", "bottom"},
-            {"U", "top-left"}, {"I", "top-right"}, {"J", "bottom-left"}, {"K", "bottom-right"}
+            {"U", "top-left"}, {"I", "top-right"}, {"J", "bottom-left"}, {"K", "bottom-right"}, {"RETURN", "full"}
         }) {
             if (g_pKeybindManager->findConflictingKeybind(xkb_keysym_from_name(key, XKB_KEYSYM_CASE_INSENSITIVE), modifiers))
                 continue;
             bindings.push_back(g_pKeybindManager->addKeybind(SKeybind{
                 .key = key, .modmask = modifiers, .handler = "omasnap:snap", .arg = zone,
-                .description = std::string("Omasnap: ") + zone, .hasDescription = true,
+                .description = std::string("Gridnet: ") + zone, .hasDescription = true,
                 .displayKey = std::string("CTRL + ALT + SHIFT + ") + key,
             }));
         }
@@ -316,14 +316,14 @@ APICALL EXPORT std::string PLUGIN_API_VERSION() { return HYPRLAND_API_VERSION; }
 
 APICALL EXPORT PLUGIN_DESCRIPTION_INFO PLUGIN_INIT(HANDLE handle) {
     if (std::string(__hyprland_api_get_hash()) != __hyprland_api_get_client_hash())
-        throw std::runtime_error("Omasnap: installed headers do not match the running Hyprland; rebuild after logging in again");
+        throw std::runtime_error("Gridnet: installed headers do not match the running Hyprland; rebuild after logging in again");
     instance = std::make_unique<Snap>();
     if (!HyprlandAPI::addDispatcherV2(handle, "omasnap:snap", [](std::string zone) -> SDispatchResult {
         const auto w = Desktop::focusState()->window();
         if (!instance->eligible(w ? w->m_target : nullptr)) return {.passEvent = true, .success = true, .error = ""};
         const auto result = instance->request("omasnap snap " + zone);
         return {.success = result == "ok", .error = result == "ok" ? "" : result};
-    })) throw std::runtime_error("Omasnap: could not register snap dispatcher");
+    })) throw std::runtime_error("Gridnet: could not register snap dispatcher");
     auto& events = Event::bus()->m_events;
     instance->listeners.push_back(events.config.reloaded.listen([] { instance->installBindings(); }));
     instance->listeners.push_back(events.input.mouse.move.listen([](Vector2D, Event::SCallbackInfo&) { instance->motion(); }));
@@ -342,9 +342,9 @@ APICALL EXPORT PLUGIN_DESCRIPTION_INFO PLUGIN_INIT(HANDLE handle) {
     instance->command = HyprlandAPI::registerHyprCtlCommand(handle, SHyprCtlCommand{
         .name = "omasnap", .exact = false,
         .fn = [](eHyprCtlOutputFormat, std::string request) { return instance->request(request); }});
-    if (!instance->command) throw std::runtime_error("Omasnap: could not register IPC command");
+    if (!instance->command) throw std::runtime_error("Gridnet: could not register IPC command");
     instance->installBindings();
-    return {"omasnap-window-snap", "Edge and corner snapping for native Omarchy floating workspaces", "Omasnap contributors", "0.1.4"};
+    return {"omasnap-window-snap", "Omarchy Gridnet: window snapping for floating workspaces", "hudrucan", "1.0.0"};
 }
 
 APICALL EXPORT void PLUGIN_EXIT() { instance.reset(); }

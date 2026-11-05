@@ -40,7 +40,7 @@ Item {
                     if (entries[i].id === root.pluginId) value = entries[i];
                 root.settings = value;
             } catch (error) {
-                console.warn("Omasnap: could not read plugin settings: " + error);
+                console.warn("Gridnet: could not read plugin settings: " + error);
             }
         }
     }
@@ -59,7 +59,7 @@ Item {
         }
         onExited: function(exitCode) {
             root.ready = false;
-            if (exitCode !== 0) console.warn("Omasnap: controller exited with code " + exitCode);
+            if (exitCode !== 0) console.warn("Gridnet: controller exited with code " + exitCode);
         }
     }
 

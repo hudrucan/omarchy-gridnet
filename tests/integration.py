@@ -111,7 +111,7 @@ try:
     ctl("omasnap", "restore", check=False)
     position(300, 220)
     original = geometry()
-    for zone in ["left", "right", "top", "bottom", "top-left", "top-right", "bottom-left", "bottom-right"]:
+    for zone in ["left", "right", "top", "bottom", "top-left", "top-right", "bottom-left", "bottom-right", "full"]:
         assert ctl("omasnap", "snap " + zone) == "ok"
         time.sleep(0.1)
         at, size = geometry()
@@ -119,21 +119,32 @@ try:
         assert ctl("omasnap", "restore") == "ok"
         time.sleep(0.1)
         assert geometry() == original, (zone, geometry(), original)
-    print("All eight IPC placements and exact restoration passed", flush=True)
+    print("All nine IPC placements and exact restoration passed", flush=True)
 
-    assert len(snap_bindings()) == 8
+    assert len(snap_bindings()) == 9
     for key, zone in [("Left", "left"), ("Right", "right"), ("Up", "top"), ("Down", "bottom"),
-                      ("u", "top-left"), ("i", "top-right"), ("j", "bottom-left"), ("k", "bottom-right")]:
+                      ("u", "top-left"), ("i", "top-right"), ("j", "bottom-left"), ("k", "bottom-right"), ("Return", "full")]:
         shortcut(key)
         assert geometry() == expected(zone), (key, geometry(), expected(zone))
         assert ctl("omasnap", "restore") == "ok"
         time.sleep(0.1)
         assert geometry() == original
-    print("All eight Ctrl+Alt+Shift keyboard shortcuts passed", flush=True)
+    print("All nine Ctrl+Alt+Shift keyboard shortcuts passed", flush=True)
+
+    shortcut("Return")
+    at, _ = geometry()
+    move(at[0] + 150, at[1] - 15)
+    pointer("button 1")
+    move(at[0] + 170, at[1] - 15)
+    move(600, 400)
+    pointer("button 0")
+    assert geometry()[1] == original[1], (geometry(), original)
+    position(*original[0], *original[1])
+    print("Enter fills the work area and dragging away restores the original size", flush=True)
 
     ctl("reload")
     time.sleep(0.3)
-    assert len(snap_bindings()) == 8
+    assert len(snap_bindings()) == 9
     shortcut("Up")
     assert geometry() == expected("top")
     assert ctl("omasnap", "restore") == "ok"

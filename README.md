@@ -1,11 +1,11 @@
 <p align="center">
-  <img src="assets/banner.svg" alt="Omasnap — float freely, snap into place." width="100%" />
+  <img src="assets/banner.svg" alt="Omarchy Gridnet — float freely, snap into place." width="100%" />
 </p>
 
 <p align="center">
-  <a href="https://omarchy.org"><img src="https://img.shields.io/badge/Omarchy-4.5%20rc3-b8e994?style=flat-square&amp;labelColor=202820" alt="Tested on Omarchy 4.5 rc3" /></a>
-  <a href="https://hypr.land"><img src="https://img.shields.io/badge/Hyprland-0.56.2-8bd5ca?style=flat-square&amp;labelColor=202820" alt="Tested on Hyprland 0.56.2" /></a>
-  <a href="LICENSE"><img src="https://img.shields.io/badge/license-MIT-e8eddf?style=flat-square&amp;labelColor=202820" alt="MIT license" /></a>
+  <a href="https://omarchy.org"><img src="https://img.shields.io/badge/Omarchy-4.5%20rc3-d4d4d8?style=flat-square&amp;labelColor=27272a" alt="Tested on Omarchy 4.5 rc3" /></a>
+  <a href="https://hypr.land"><img src="https://img.shields.io/badge/Hyprland-0.56.2-d4d4d8?style=flat-square&amp;labelColor=27272a" alt="Tested on Hyprland 0.56.2" /></a>
+  <a href="LICENSE"><img src="https://img.shields.io/badge/license-MIT-d4d4d8?style=flat-square&amp;labelColor=27272a" alt="MIT license" /></a>
 </p>
 
 <p align="center">
@@ -34,15 +34,28 @@ Active only in **native floating workspaces**. Uses your existing titlebars and 
 ## Install
 
 ```sh
-omarchy plugin add https://github.com/hudrucan/omasnap --enable
+omarchy plugin add https://github.com/hudrucan/omarchy-gridnet --enable
 ```
 
 **Tested on Omarchy 4.5 rc3 · Hyprland 0.56.2.** Requires Python 3, `pkg-config`,
 `g++` with C++26 support, and matching Hyprland development headers
 (`pkg-config hyprland` must succeed). The native module builds on first use.
 
-After updating Hyprland, log in again before enabling Omasnap so the running
+After updating Hyprland, log in again before enabling Gridnet so the running
 compositor matches the installed headers.
+
+<details>
+<summary><strong>Upgrading from Omasnap</strong></summary>
+
+Omarchy Gridnet is the new name for Omasnap. The plugin ID, IPC commands, and
+cache/runtime paths keep their original names so existing installations and
+settings continue to work. The old GitHub URL redirects to this repository.
+
+```sh
+omarchy plugin update omasnap.window-snap
+```
+
+</details>
 
 ## Use
 
@@ -73,8 +86,9 @@ Hold **Ctrl + Alt + Shift** (Mac: **Control + Option + Shift**):
 | `↑` / `↓` | Top / bottom half |
 | `U` / `I` | Top-left / top-right quarter |
 | `J` / `K` | Bottom-left / bottom-right quarter |
+| `Enter` | Full work area (maximize) |
 
-These eight shortcuts are registered while Omasnap is enabled and removed when
+These nine shortcuts are registered while Gridnet is enabled and removed when
 disabled. Outside native floating workspaces, they pass through to the focused
 app. Existing bindings for the same combinations take priority.
 
@@ -133,15 +147,15 @@ hyprctl omasnap restore
 ```
 
 Snap targets: `left`, `right`, `top`, `bottom`, `top-left`, `top-right`,
-`bottom-left`, `bottom-right`.
+`bottom-left`, `bottom-right`, `full`.
 
 </details>
 
 ## Development
 
 ```sh
-git clone https://github.com/hudrucan/omasnap.git
-cd omasnap
+git clone https://github.com/hudrucan/omarchy-gridnet.git
+cd omarchy-gridnet
 ./validate
 ```
 
@@ -153,7 +167,7 @@ Hyprland instance. To install a clean, committed checkout locally, run `./instal
 Builds are cached in `~/.cache/omasnap-window-snap/` (or under `$XDG_CACHE_HOME`)
 and checked against the running Hyprland ABI.
 
-Found a bug? [Open an issue](https://github.com/hudrucan/omasnap/issues) with your
+Found a bug? [Open an issue](https://github.com/hudrucan/omarchy-gridnet/issues) with your
 Omarchy and Hyprland versions, drag method, and steps to reproduce.
 
 ---

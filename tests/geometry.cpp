@@ -22,6 +22,7 @@ int main() {
     check(placement(Zone::topLeft, work, 8) == Box{-1912, 148, 944, 504}, "quarter respects reserved top bar");
     check(placement(Zone::top, work, 8) == Box{-1912, 148, 1904, 504}, "top half respects reserved top bar");
     check(placement(Zone::bottom, work, 8) == Box{-1912, 668, 1904, 504}, "bottom half mirrors top half");
+    check(placement(Zone::full, work, 8) == Box{-1912, 148, 1904, 1024}, "full placement respects reserved top bar and gap");
     const Box fractional{37.5, -100.25, 1537.5, 863.5};
     const auto l = placement(Zone::left, fractional, 8), r = placement(Zone::right, fractional, 8);
     check(l.x + l.w + 16 == r.x, "fractional scale has consistent seam");
@@ -31,7 +32,7 @@ int main() {
     check(keepVisible({-1900, 200, 800, 600}, work) == Box{-1900, 200, 800, 600}, "normal placement unchanged");
     const auto huge = keepVisible({3000, 3000, 4000, 3000}, work);
     check(huge.x == -64 && huge.y == 1150, "oversized window keeps a grip on screen");
-    for (int i = 1; i <= int(Zone::bottomRight); ++i)
+    for (int i = 1; i <= int(Zone::full); ++i)
         check(parseZone(zoneName(Zone(i))) == Zone(i), "zone roundtrip");
     std::cout << "Geometry checks passed\n";
 }

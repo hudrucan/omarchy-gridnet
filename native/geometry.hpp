@@ -10,7 +10,7 @@ struct Box {
     double x, y, w, h;
     bool operator==(const Box&) const = default;
 };
-enum class Zone { none, left, right, top, bottom, topLeft, topRight, bottomLeft, bottomRight };
+enum class Zone { none, left, right, top, bottom, topLeft, topRight, bottomLeft, bottomRight, full };
 
 inline Zone zoneAt(Point p, Box screen, double edge = 24, double corner = 160) {
     if (p.x < screen.x || p.y < screen.y || p.x >= screen.x + screen.w || p.y >= screen.y + screen.h)
@@ -41,12 +41,13 @@ inline std::string_view zoneName(Zone zone) {
         case Zone::topRight: return "top-right";
         case Zone::bottomLeft: return "bottom-left";
         case Zone::bottomRight: return "bottom-right";
+        case Zone::full: return "full";
         default: return "none";
     }
 }
 
 inline Zone parseZone(std::string_view name) {
-    for (int i = 1; i <= int(Zone::bottomRight); ++i)
+    for (int i = 1; i <= int(Zone::full); ++i)
         if (zoneName(Zone(i)) == name) return Zone(i);
     return Zone::none;
 }

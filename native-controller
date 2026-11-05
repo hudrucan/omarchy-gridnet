@@ -41,7 +41,7 @@ def build():
     output = cache / f"omasnap-{digest.hexdigest()[:20]}.so"
     if output.is_file():
         return output
-    print("Omasnap: building the native module for installed Hyprland headers", file=sys.stderr)
+    print("Gridnet: building the native module for installed Hyprland headers", file=sys.stderr)
     with tempfile.TemporaryDirectory(prefix="build-", dir=cache) as temporary:
         compiled = Path(temporary) / "omasnap.so"
         result = subprocess.run([
@@ -132,7 +132,7 @@ def serve(token):
                         break
                     configure(line)
                 except (ValueError, RuntimeError) as error:
-                    print(f"Omasnap: {error}", file=sys.stderr, flush=True)
+                    print(f"Gridnet: {error}", file=sys.stderr, flush=True)
                 finally:
                     fcntl.flock(lock, fcntl.LOCK_UN)
         finally:
@@ -172,5 +172,5 @@ if __name__ == "__main__":
         else:
             stop_service(args.token)
     except (OSError, RuntimeError, subprocess.SubprocessError, KeyError, ValueError) as error:
-        print(f"Omasnap: {error}", file=sys.stderr)
+        print(f"Gridnet: {error}", file=sys.stderr)
         sys.exit(1)
