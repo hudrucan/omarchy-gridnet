@@ -23,6 +23,12 @@ int main() {
     check(placement(Zone::top, work, 8) == Box{-1912, 148, 1904, 504}, "top half respects reserved top bar");
     check(placement(Zone::bottom, work, 8) == Box{-1912, 668, 1904, 504}, "bottom half mirrors top half");
     check(placement(Zone::full, work, 8) == Box{-1912, 148, 1904, 1024}, "full placement respects reserved top bar and gap");
+    const Gaps inner{3, 5, 7, 9}, outer{11, 13, 17, 19};
+    check(placement(Zone::left, work, inner, outer) == Box{-1901, 151, 936, 1012}, "left half separates inner right gap from outer edges");
+    check(placement(Zone::topRight, work, inner, outer) == Box{-951, 151, 938, 502}, "quarter uses asymmetric inner and outer gaps");
+    check(placement(Zone::full, work, inner, outer) == Box{-1901, 151, 1888, 1012}, "full placement uses only outer gaps");
+    check(placement(Zone::right, work, Gaps{0, 0, 0, 0}, Gaps{0, 0, 0, 0}) == Box{-960, 140, 960, 1040}, "zero gaps are flush with monitor and split");
+    check(placement(Zone::full, {0, 0, 100, 1000}, 100) == Box{25, 25, 50, 950}, "explicit gap keeps the legacy cap on narrow areas");
     const Box fractional{37.5, -100.25, 1537.5, 863.5};
     const auto l = placement(Zone::left, fractional, 8), r = placement(Zone::right, fractional, 8);
     check(l.x + l.w + 16 == r.x, "fractional scale has consistent seam");

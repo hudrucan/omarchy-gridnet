@@ -87,7 +87,7 @@ assert mon["x"] == mon["y"] == 0 and mon["scale"] == 1, mon
 width, height = mon["width"], mon["height"]
 
 
-def expected(zone):
+def expected(zone, inner=(8, 8, 8, 8), outer=(8, 8, 8, 8)):
     left, top, right, bottom = mon["reserved"]
     x1, y1, x2, y2 = left, top, width - right, height - bottom
     mid_x, mid_y = (x1 + x2) // 2, (y1 + y2) // 2
@@ -95,12 +95,17 @@ def expected(zone):
     if zone in ["right", "top-right", "bottom-right"]: x1 = mid_x
     if zone in ["top", "top-left", "top-right"]: y2 = mid_y
     if zone in ["bottom", "bottom-left", "bottom-right"]: y1 = mid_y
-    # This compositor uses a 2px border, 30px native titlebar and 8px gap.
-    return [x1 + 10, y1 + 40], [x2 - x1 - 20, y2 - y1 - 50]
+    t = inner[0] if zone in ["bottom", "bottom-left", "bottom-right"] else outer[0]
+    r = inner[1] if zone in ["left", "top-left", "bottom-left"] else outer[1]
+    b = inner[2] if zone in ["top", "top-left", "top-right"] else outer[2]
+    l = inner[3] if zone in ["right", "top-right", "bottom-right"] else outer[3]
+    # This compositor uses a 2px border and 30px native titlebar.
+    return [x1 + l + 2, y1 + t + 32], [x2 - x1 - l - r - 4, y2 - y1 - t - b - 34]
 
 
 window = next(w for w in windows() if w["class"] == args.app_id)
 address = window["address"]
+assert ctl("eval", f'hl.dispatch(hl.dsp.window.move({{window="address:{address}",monitor="OMASNAP-TEST"}}))') == "ok"
 assert ctl("eval", f'hl.dispatch(hl.dsp.focus({{window="address:{address}"}}))') == "ok"
 assert json.loads(ctl("omasnap", "status"))["ready"]
 assert ctl("omasnap", "configure 24 160 8 1 1 59a6ff") == "ok"
@@ -120,6 +125,56 @@ try:
         time.sleep(0.1)
         assert geometry() == original, (zone, geometry(), original)
     print("All nine IPC placements and exact restoration passed", flush=True)
+
+    # Auto mode reads changes from Hyprland at placement time, without a
+    # shell settings change or service restart. Explicit gaps remain supported.
+    assert ctl("omasnap", "configure 24 160 -1 1 1 59a6ff") == "ok"
+    assert ctl("eval", 'hl.config({general={gaps_in=7,gaps_out=12,float_gaps=0}})') == "ok"
+    for zone in ["left", "right", "top-left", "full"]:
+        assert ctl("omasnap", "snap " + zone) == "ok"
+        time.sleep(0.1)
+        assert geometry() == expected(zone, (7,)*4, (0,)*4), (zone, geometry())
+    assert ctl("omasnap", "restore") == "ok"
+    position(*original[0], *original[1])
+    move(450, 205)
+    pointer("button 1")
+    move(460, 205)
+    move(500, 240)
+    move(width - 3, height // 2)
+    assert json.loads(ctl("omasnap", "status"))["zone"] == "right"
+    subprocess.run(["grim", "-o", "OMASNAP-TEST", str(artifacts / "auto-gaps-preview.png")], env=env, check=True)
+    pointer("button 0")
+    assert geometry() == expected("right", (7,)*4, (0,)*4), geometry()
+    assert current()["monitor"] == mon["id"], current()
+    workspace_monitor = next(w["monitorID"] for w in json.loads(ctl("-j", "workspaces")) if w["id"] == current()["workspace"]["id"])
+    assert workspace_monitor == mon["id"], "Snapped window remained on the neighboring output's workspace"
+    move(width // 2 + 200, height // 2)
+    assert ctl("eval", 'hl.config({general={gaps_in=0,float_gaps=-1}})') == "ok"
+    assert ctl("omasnap", "snap right") == "ok"
+    time.sleep(0.1)
+    assert geometry() == expected("right", (0,)*4, (12,)*4), geometry()
+    assert ctl("eval", 'hl.config({general={gaps_in={top=3,right=5,bottom=7,left=9},float_gaps={top=11,right=13,bottom=17,left=19}}})') == "ok"
+    assert ctl("omasnap", "snap top-right") == "ok"
+    time.sleep(0.1)
+    assert geometry() == expected("top-right", (3, 5, 7, 9), (11, 13, 17, 19)), geometry()
+    workspace = current()["workspace"]["name"]
+    assert ctl("eval", f'hl.workspace_rule({{workspace={json.dumps(workspace)},gaps_in=2,float_gaps=6}})') == "ok"
+    assert ctl("omasnap", "snap left") == "ok"
+    time.sleep(0.1)
+    assert geometry() == expected("left", (2,)*4, (6,)*4), geometry()
+    assert ctl("eval", f'hl.workspace_rule({{workspace={json.dumps(workspace)},gaps_in=2,float_gaps=-1,gaps_out=9}})') == "ok"
+    assert ctl("omasnap", "snap right") == "ok"
+    time.sleep(0.1)
+    assert geometry() == expected("right", (2,)*4, (9,)*4), geometry()
+    assert ctl("omasnap", "configure 24 160 8 1 1 59a6ff") == "ok"
+    assert ctl("omasnap", "snap left") == "ok"
+    time.sleep(0.1)
+    assert geometry() == expected("left"), geometry()
+    assert ctl("omasnap", "restore") == "ok"
+    ctl("reload")
+    time.sleep(0.3)
+    assert geometry() == original, (geometry(), original)
+    print("Live gaps in preview/drop, outer inheritance, asymmetric sides, workspace overrides and explicit Gridnet gap passed", flush=True)
 
     assert len(snap_bindings()) == 9
     for key, zone in [("Left", "left"), ("Right", "right"), ("Up", "top"), ("Down", "bottom"),

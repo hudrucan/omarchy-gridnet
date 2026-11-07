@@ -5,6 +5,7 @@ mkdir -p build
 g++ -std=c++23 -Wall -Wextra -Werror tests/geometry.cpp -o build/test-geometry
 ./build/test-geometry
 python3 -m py_compile native-controller tests/integration.py
+python3 tests/controller.py
 omarchy plugin validate .
 /usr/lib/qt6/bin/qmllint -I /usr/share/omarchy/shell -I /usr/lib/qt6/qml Service.qml
 python3 native-controller build

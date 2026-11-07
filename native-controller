@@ -58,11 +58,15 @@ def build():
 def configure(line):
     settings = json.loads(line)
     values = []
-    for key, default, minimum, maximum in [("edge", 24, 4, 100), ("corner", 160, 16, 500), ("gap", 8, 0, 100)]:
+    for key, default, minimum, maximum in [("edge", 24, 4, 100), ("corner", 160, 16, 500)]:
         value = settings.get(key, default)
         if isinstance(value, bool) or not isinstance(value, (int, float)) or not minimum <= value <= maximum:
             raise ValueError(f"{key} must be between {minimum} and {maximum}")
         values.append(str(value))
+    gap = settings.get("gap")
+    if gap is not None and (isinstance(gap, bool) or not isinstance(gap, (int, float)) or not 0 <= gap <= 100):
+        raise ValueError("gap must be null or between 0 and 100")
+    values.append(str(-1 if gap is None else gap))
     for key in ["preview", "keepVisible"]:
         value = settings.get(key, True)
         if not isinstance(value, bool):

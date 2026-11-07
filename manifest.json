@@ -2,7 +2,7 @@
   "schemaVersion": 1,
   "id": "omasnap.window-snap",
   "name": "Omarchy Gridnet",
-  "version": "1.0.0",
+  "version": "1.0.1",
   "author": "hudrucan",
   "description": "Drag floating windows to screen edges and corners to snap them into horizontal halves, vertical halves, or quarters.",
   "license": "MIT",

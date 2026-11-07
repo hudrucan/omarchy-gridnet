@@ -27,7 +27,7 @@
 - **See before you snap.** Live previews follow your Omarchy accent color.
 - **Get your size back.** Pull a snapped window away to restore its previous size.
 - **Keep windows within reach.** Free drops leave a titlebar grip on screen.
-- **Fit your desktop.** Placement respects panel reservations and your chosen gap.
+- **Fit your desktop.** Placement follows Hyprland gaps and panel reservations.
 
 Active only in **native floating workspaces**. Uses your existing titlebars and drag bindings.
 
@@ -107,7 +107,7 @@ array of `~/.config/omarchy/shell.json`. Keep its other fields.
   "id": "omasnap.window-snap",
   "edge": 24,
   "corner": 160,
-  "gap": 8,
+  "gap": null,
   "preview": true,
   "keepVisible": true
 }
@@ -117,11 +117,26 @@ array of `~/.config/omarchy/shell.json`. Keep its other fields.
 | :--- | :--- | :--- |
 | `edge` | `24` | Activation strip width |
 | `corner` | `160` | Corner span along each edge |
-| `gap` | `8` | Inset from the snap area's boundaries |
+| `gap` | `null` | Follow Hyprland; a number overrides all insets |
 | `preview` | `true` | Show the destination while dragging |
 | `keepVisible` | `true` | Keep a titlebar grip on screen after free drops |
 
 Distances use logical pixels. Preview color follows your Omarchy theme.
+
+By default, Gridnet reads gaps live from Hyprland for both preview and snapping:
+
+- `general.gaps_in`: inset on each side of an internal split. A value of `7`
+  gives a `14` px gap between adjacent windows.
+- `general.float_gaps`: inset at the outside edges of the usable monitor area.
+  A negative value inherits `gaps_out`. Workspace rules can override `gaps_in`,
+  `float_gaps`, and the inherited `gaps_out`.
+- Gap values support separate `top`, `right`, `bottom`, and `left` sides.
+
+Omarchy Settings writes the window gap to `general.gaps_in` in
+`~/.config/hypr/omasettings.lua`; change it through Settings. Existing snapped
+windows pick up new gaps the next time they are snapped. An explicit Gridnet
+`gap` number keeps the old uniform inset behavior; remove it or set it to `null`
+to follow Hyprland.
 
 </details>
 

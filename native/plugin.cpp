@@ -1,6 +1,9 @@
 #include <hyprland/src/plugins/PluginAPI.hpp>
 #include <hyprland/src/Compositor.hpp>
+#include <hyprland/src/config/ConfigValue.hpp>
+#include <hyprland/src/config/shared/workspace/WorkspaceRuleManager.hpp>
 #include <hyprland/src/desktop/state/FocusState.hpp>
+#include <hyprland/src/desktop/state/GlobalWindowController.hpp>
 #include <hyprland/src/desktop/state/WindowState.hpp>
 #include <hyprland/src/event/EventBus.hpp>
 #include <hyprland/src/layout/LayoutManager.hpp>
@@ -63,7 +66,7 @@ class Snap {
     PHLMONITORREF previewMonitor;
     CBox previewBox;
     Zone previewZone = Zone::none;
-    double edge = 24, corner = 160, gap = 8;
+    double edge = 24, corner = 160, gap = -1;
     bool preview = true, keepOnScreen = true;
     bool cancelled = false;
     CHyprColor accent{0.35, 0.65, 1.0, 0.22};
@@ -118,9 +121,27 @@ class Snap {
         previewZone = Zone::none;
     }
 
-    void show(PHLMONITOR mon, Zone zone) {
+    CBox placement(SP<Target> target, PHLMONITOR mon, Zone zone) const {
+        const auto area = plain(mon->logicalBoxMinusReserved());
+        if (gap >= 0) return native(omasnap::placement(zone, area, gap));
+        static auto innerValue = CConfigValue<Config::IComplexConfigValue>("general:gaps_in");
+        static auto outerValue = CConfigValue<Config::IComplexConfigValue>("general:gaps_out");
+        static auto floatValue = CConfigValue<Config::IComplexConfigValue>("general:float_gaps");
+        const auto inner = *static_cast<Config::CCssGapData*>(innerValue.ptr());
+        const auto outer = *static_cast<Config::CCssGapData*>(outerValue.ptr());
+        const auto rule = Config::workspaceRuleMgr()->getWorkspaceRuleFor(target->window()->m_workspace).value_or(Config::CWorkspaceRule{});
+        auto floating = rule.m_floatGaps.value_or(*static_cast<Config::CCssGapData*>(floatValue.ptr()));
+        if (floating.m_top < 0 || floating.m_right < 0 || floating.m_bottom < 0 || floating.m_left < 0)
+            floating = rule.m_gapsOut.value_or(outer);
+        const auto gaps = [](const Config::CCssGapData& g) -> omasnap::Gaps {
+            return {double(g.m_top), double(g.m_right), double(g.m_bottom), double(g.m_left)};
+        };
+        return native(omasnap::placement(zone, area, gaps(rule.m_gapsIn.value_or(inner)), gaps(floating)));
+    }
+
+    void show(SP<Target> target, PHLMONITOR mon, Zone zone) {
         if (!preview || zone == Zone::none || !mon) { hide(); return; }
-        const auto box = native(omasnap::placement(zone, plain(mon->logicalBoxMinusReserved()), gap));
+        const auto box = placement(target, mon, zone);
         if (mon == previewMonitor.lock() && zone == previewZone && box == previewBox) return;
         hide();
         previewMonitor = mon;
@@ -141,7 +162,14 @@ class Snap {
 
     void place(SP<Target> target, PHLMONITOR mon, Zone zone, CBox original) {
         if (!eligible(target) || !mon || zone == Zone::none) return;
-        const auto box = client(target, native(omasnap::placement(zone, plain(mon->logicalBoxMinusReserved()), gap)));
+        // Native dragging follows the window's center across outputs; snapping
+        // follows the pointer. Keep its workspace on the snap destination too.
+        if (target->window()->m_workspace->m_monitor != mon) {
+            const auto workspace = mon->m_activeSpecialWorkspace ? mon->m_activeSpecialWorkspace : mon->m_activeWorkspace;
+            if (!workspace) return;
+            Desktop::globalWindowController()->moveWindowToWorkspace(target->window(), workspace);
+        }
+        const auto box = client(target, placement(target, mon, zone));
         if (const auto s = savedFor(target)) original = s->original;
         forget(target);
         g_layoutManager->setTargetGeom(box, target);
@@ -245,7 +273,7 @@ class Snap {
         }
         const auto mon = monitorAt(cursor);
         const auto zone = mon ? omasnap::zoneAt({cursor.x, cursor.y}, plain(mon->logicalBox()), edge, corner) : Zone::none;
-        show(mon, zone);
+        show(t, mon, zone);
     }
 
     void render(eRenderStage stage) {
@@ -276,7 +304,7 @@ class Snap {
             if (!(in >> nextEdge >> nextCorner >> nextGap >> nextPreview >> nextKeep >> std::hex >> rgb)
                 || !std::isfinite(nextEdge) || !std::isfinite(nextCorner) || !std::isfinite(nextGap)
                 || nextEdge < 4 || nextEdge > 100 || nextCorner < 16 || nextCorner > 500
-                || nextGap < 0 || nextGap > 100 || rgb > 0xffffff
+                || (nextGap != -1 && nextGap < 0) || nextGap > 100 || rgb > 0xffffff
                 || (nextPreview != 0 && nextPreview != 1) || (nextKeep != 0 && nextKeep != 1))
                 return "error: invalid configuration";
             edge = nextEdge; corner = nextCorner; gap = nextGap;
@@ -344,7 +372,7 @@ APICALL EXPORT PLUGIN_DESCRIPTION_INFO PLUGIN_INIT(HANDLE handle) {
         .fn = [](eHyprCtlOutputFormat, std::string request) { return instance->request(request); }});
     if (!instance->command) throw std::runtime_error("Gridnet: could not register IPC command");
     instance->installBindings();
-    return {"omasnap-window-snap", "Omarchy Gridnet: window snapping for floating workspaces", "hudrucan", "1.0.0"};
+    return {"omasnap-window-snap", "Omarchy Gridnet: window snapping for floating workspaces", "hudrucan", "1.0.1"};
 }
 
 APICALL EXPORT void PLUGIN_EXIT() { instance.reset(); }

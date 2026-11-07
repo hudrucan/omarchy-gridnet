@@ -11,6 +11,7 @@ struct Box {
     bool operator==(const Box&) const = default;
 };
 enum class Zone { none, left, right, top, bottom, topLeft, topRight, bottomLeft, bottomRight, full };
+struct Gaps { double top, right, bottom, left; };
 
 inline Zone zoneAt(Point p, Box screen, double edge = 24, double corner = 160) {
     if (p.x < screen.x || p.y < screen.y || p.x >= screen.x + screen.w || p.y >= screen.y + screen.h)
@@ -54,7 +55,7 @@ inline Zone parseZone(std::string_view name) {
 
 // Split the usable area before adding gaps: odd and fractional monitor sizes
 // share the same dividing pixel, including on monitors left of the origin.
-inline Box placement(Zone zone, Box area, double gap) {
+inline Box placement(Zone zone, Box area, Gaps inner, Gaps outer) {
     const bool left = zone == Zone::left || zone == Zone::topLeft || zone == Zone::bottomLeft;
     const bool right = zone == Zone::right || zone == Zone::topRight || zone == Zone::bottomRight;
     const bool upper = zone == Zone::top || zone == Zone::topLeft || zone == Zone::topRight;
@@ -64,10 +65,20 @@ inline Box placement(Zone zone, Box area, double gap) {
     if (right) x1 = std::floor(area.x + area.w / 2);
     if (upper) y2 = std::floor(area.y + area.h / 2);
     if (lower) y1 = std::floor(area.y + area.h / 2);
-    gap = std::min({gap, (x2 - x1) / 4, (y2 - y1) / 4});
-    return {std::ceil(x1 + gap), std::ceil(y1 + gap),
-            std::max(1.0, std::floor(x2 - gap) - std::ceil(x1 + gap)),
-            std::max(1.0, std::floor(y2 - gap) - std::ceil(y1 + gap))};
+    const double limit = std::max(0.0, std::min(x2 - x1, y2 - y1) / 4);
+    const double t = std::clamp(lower ? inner.top : outer.top, 0.0, limit);
+    const double r = std::clamp(left ? inner.right : outer.right, 0.0, limit);
+    const double b = std::clamp(upper ? inner.bottom : outer.bottom, 0.0, limit);
+    const double l = std::clamp(right ? inner.left : outer.left, 0.0, limit);
+    return {std::ceil(x1 + l), std::ceil(y1 + t),
+            std::max(1.0, std::floor(x2 - r) - std::ceil(x1 + l)),
+            std::max(1.0, std::floor(y2 - b) - std::ceil(y1 + t))};
+}
+
+// An explicit Gridnet gap preserves the original uniform-inset behavior.
+inline Box placement(Zone zone, Box area, double gap) {
+    const Gaps uniform{gap, gap, gap, gap};
+    return placement(zone, area, uniform, uniform);
 }
 
 // Preserve enough of the top of the frame to grab it again. Oversized windows
